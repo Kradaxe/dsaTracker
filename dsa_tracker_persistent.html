@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DSA Tracker</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --card: #171a21;
+    --card-hover: #1d212a;
+    --border: #262b36;
+    --text: #e6e8eb;
+    --text-dim: #8b909c;
+    --text-faint: #565c68;
+    --accent: #4f8cff;
+    --accent-dim: #2c4a86;
+    --done: #33c17a;
+    --done-bg: rgba(51,193,122,0.12);
+    --track-bg: #1e222b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 80px; }
+
+  header { margin-bottom: 24px; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .subtitle { color: var(--text-dim); font-size: 14px; margin: 0; }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr 1fr;
+    gap: 10px;
+    margin: 20px 0 28px;
+  }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .stat .num { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat .label { font-size: 11.5px; color: var(--text-dim); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .stat.big .num { color: var(--accent); }
+
+  .ring-wrap { display: flex; align-items: center; gap: 12px; }
+  .ring-wrap .num { color: var(--done); }
+
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  input[type="text"] {
+    flex: 1;
+    min-width: 180px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+  }
+  input[type="text"]:focus { border-color: var(--accent); }
+  input[type="text"]::placeholder { color: var(--text-faint); }
+
+  select {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 9px 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    outline: none;
+  }
+
+  button.pill {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 9px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  button.pill:hover { color: var(--text); border-color: var(--accent-dim); }
+
+  .section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .section-head:hover { background: var(--card-hover); }
+  .section-title-row { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+  .section-title { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .section-count { font-size: 12.5px; color: var(--text-dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .chevron { color: var(--text-faint); font-size: 12px; transition: transform 0.15s ease; flex-shrink: 0; }
+  .section.open .chevron { transform: rotate(90deg); }
+
+  .section-progress-track {
+    height: 4px;
+    background: var(--track-bg);
+    margin: 0 18px;
+  }
+  .section-progress-fill {
+    height: 100%;
+    background: var(--done);
+    border-radius: 2px;
+    transition: width 0.2s ease;
+  }
+
+  .problem-list {
+    display: none;
+    padding: 6px 8px 12px;
+  }
+  .section.open .problem-list { display: block; }
+
+  .checkbox {
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    border: 1.5px solid var(--text-faint);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .problem-row.done .checkbox {
+    background: var(--done);
+    border-color: var(--done);
+  }
+  .checkbox svg { width: 11px; height: 11px; display: none; }
+  .problem-row.done .checkbox svg { display: block; }
+
+  .problem-item { border-radius: 8px; }
+  .problem-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .problem-row:hover { background: var(--card-hover); }
+  .problem-row.hidden { display: none; }
+
+  .problem-name { font-size: 14px; flex: 1; }
+  .problem-row.done .problem-name { color: var(--text-dim); text-decoration: line-through; text-decoration-color: var(--text-faint); }
+
+  .notes-toggle {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-faint);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .notes-toggle:hover { color: var(--text); border-color: var(--accent-dim); }
+  .notes-toggle.has-content { color: var(--accent); border-color: var(--accent-dim); }
+  .notes-toggle.open { background: var(--accent-dim); color: var(--text); }
+
+  .problem-details {
+    display: none;
+    padding: 4px 10px 14px 46px;
+  }
+  .problem-item.details-open .problem-details { display: block; }
+
+  .problem-details label {
+    display: block;
+    font-size: 11px;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 8px 0 4px;
+  }
+  .problem-details textarea {
+    width: 100%;
+    min-height: 64px;
+    resize: vertical;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+    box-sizing: border-box;
+  }
+  .problem-details textarea:focus { border-color: var(--accent); }
+  .problem-details input[type="url"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+    box-sizing: border-box;
+  }
+  .problem-details input[type="url"]:focus { border-color: var(--accent); }
+  .details-links { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+  .details-links a {
+    font-size: 12px;
+    color: var(--accent);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .details-links a:hover { text-decoration: underline; }
+
+  .empty-msg { text-align: center; color: var(--text-faint); font-size: 13px; padding: 40px 0; }
+
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  @media (max-width: 560px) {
+    .stats-row { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>DSA tracker</h1>
+    <p class="subtitle">MAANG interview prep — cross-checked against NeetCode 150 and Striver's A2Z sheet. Check off problems as you solve them; progress saves automatically.</p>
+  </header>
+
+  <div class="stats-row">
+    <div class="stat big">
+      <div class="num" id="stat-percent">0%</div>
+      <div class="label">Overall progress</div>
+    </div>
+    <div class="stat">
+      <div class="num" id="stat-done">0</div>
+      <div class="label">Solved</div>
+    </div>
+    <div class="stat">
+      <div class="num" id="stat-remaining">0</div>
+      <div class="label">Remaining</div>
+    </div>
+    <div class="stat">
+      <div class="num" id="stat-total">0</div>
+      <div class="label">Total problems</div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <input type="text" id="search" placeholder="Search problems...">
+    <select id="filter">
+      <option value="all">All problems</option>
+      <option value="done">Solved only</option>
+      <option value="todo">Unsolved only</option>
+    </select>
+    <button class="pill" id="expand-all">Expand all</button>
+    <button class="pill" id="collapse-all">Collapse all</button>
+  </div>
+
+  <div id="sections"></div>
+  <div class="empty-msg" id="empty-msg" style="display:none;">No problems match your search.</div>
+</div>
+
+<script>
+const DATA = [
+  { name: "Arrays & Strings", problems: [
+    "3Sum","4Sum","Container With Most Water","Trapping Rain Water","Sort Colors","Boats to Save People","Squares of a Sorted Array",
+    "Longest Substring Without Repeating Characters","Minimum Window Substring","Longest Substring with At Most K Distinct Characters","Fruit Into Baskets","Max Consecutive Ones III","Minimum Size Subarray Sum","Sliding Window Maximum","Permutation in String","Find All Anagrams in a String","Subarrays with K Different Integers",
+    "Subarray Sum Equals K","Continuous Subarray Sum","Product of Array Except Self","Range Sum Query 2D","Corporate Flight Bookings","Car Pooling",
+    "Maximum Subarray (Kadane's)","Maximum Product Subarray","Maximum Circular Subarray Sum","Best Time to Buy/Sell Stock (all variants)",
+    "Find the Duplicate Number","First Missing Positive","Find All Missing Numbers","Set Mismatch",
+    "Basic Calculator I/II/III","Multiply Strings","Text Justification","Zigzag Conversion","Minimum Window Subsequence","Longest Palindromic Substring","Decode Ways",
+    "Rotate Image (matrix 90°)","Spiral Matrix (traverse + generate)","Set Matrix Zeroes"
+  ]},
+  { name: "Hashing", problems: [
+    "LRU Cache","LFU Cache","Longest Consecutive Sequence","Insert Delete GetRandom O(1)","Copy List with Random Pointer","Group Anagrams","Top K Frequent Elements","Random Pick with Weight","Design a HashMap with TTL","Subarray Sum Equals K (hashmap)"
+  ]},
+  { name: "Linked Lists", problems: [
+    "Reverse Nodes in k-Group","Merge K Sorted Lists","Detect Cycle + Find Cycle Start","Reorder List","Add Two Numbers","Flatten a Multilevel Doubly Linked List","Copy List with Random Pointer","Sort a Linked List (merge sort)","LRU Cache (DLL + hashmap)","Design Browser History","Swap Nodes in Pairs","Rotate List"
+  ]},
+  { name: "Stacks, Queues & Monotonic Structures", problems: [
+    "Min Stack / Max Stack","Largest Rectangle in Histogram","Maximal Rectangle","Trapping Rain Water (stack)","Next Greater Element I/II/III","Daily Temperatures","Remove K Digits","Decode String","Asteroid Collision","Basic Calculator","Sliding Window Maximum (deque)","Sum of Subarray Minimums","Online Stock Span","132 Pattern","Task Scheduler","Design Circular Deque"
+  ]},
+  { name: "Recursion & Backtracking", problems: [
+    "Subsets I/II","Permutations I/II","Combination Sum I/II/III","Generate Parentheses","Letter Combinations of a Phone Number","Palindrome Partitioning","Restore IP Addresses","Word Search","Word Search II (Trie)","N-Queens + N-Queens II","Sudoku Solver","Beautiful Arrangement","Splitting a String Into the Max Number of Unique Substrings","Matchsticks to Square"
+  ]},
+  { name: "Sorting (Applied)", problems: [
+    "Merge Intervals","Insert Interval","Non-overlapping Intervals","Meeting Rooms I/II","Count Inversions","Reverse Pairs","Count of Smaller Numbers After Self","Largest Number","Kth Largest Element (Quickselect)","H-Index"
+  ]},
+  { name: "Binary Search", problems: [
+    "Search in Rotated Sorted Array I/II","Find Minimum in Rotated Sorted Array","Find Peak Element","Search a 2D Matrix I/II","Median of Two Sorted Arrays","Koko Eating Bananas","Capacity To Ship Packages Within D Days","Split Array Largest Sum","Minimum Days to Make m Bouquets","Aggressive Cows","Book Allocation Problem","Kth Smallest Element in a Sorted Matrix","Find K Closest Elements","Single Element in a Sorted Array","Minimize Max Distance to Gas Station","Painter's Partition Problem"
+  ]},
+  { name: "Trees & BSTs", problems: [
+    "Diameter of Binary Tree","Binary Tree Maximum Path Sum","Lowest Common Ancestor (Tree + BST)","Construct Tree from Preorder/Inorder/Postorder","Serialize and Deserialize Binary Tree","Flatten Binary Tree to Linked List","Populating Next Right Pointers I/II","Vertical Order Traversal","Boundary Traversal","Morris Traversal","Binary Tree Right Side View","All Nodes Distance K in Binary Tree","Kth Smallest Element in a BST","BST Iterator","Recover Binary Search Tree","Validate BST","Sum Root to Leaf Numbers","Count Complete Tree Nodes","Path Sum III","Subtree of Another Tree","Two Sum IV (BST)","Trim a BST","Balance a BST","Convert Sorted Array to BST","Segment Tree (build + query + update)","Fenwick Tree (BIT)","Trie (Insert/Search/Word Search II/Max XOR)","Design Add and Search Words (wildcard Trie)"
+  ]},
+  { name: "Heaps / Priority Queues", problems: [
+    "Kth Largest Element in a Stream","Top K Frequent Elements","K Closest Points to Origin","Merge K Sorted Lists","Find Median from Data Stream","Sliding Window Median","Task Scheduler","Reorganize String","Meeting Rooms II","Ugly Number II","Minimum Cost to Connect Sticks","Single-Threaded CPU","IPO (Maximize Capital)","Employee Free Time"
+  ]},
+  { name: "Graphs", problems: [
+    "Number of Islands (+ II)","Max Area of Island","Rotting Oranges","Walls and Gates","Surrounded Regions","Clone Graph","Word Ladder I/II","01 Matrix","Pacific Atlantic Water Flow","Bus Routes",
+    "Course Schedule I/II","Alien Dictionary","Course Schedule III","Minimum Height Trees","Sequence Reconstruction",
+    "Redundant Connection","Accounts Merge","Number of Provinces","Graph Valid Tree","Most Stones Removed with Same Row/Column","Smallest String With Swaps","Satisfiability of Equality Equations","Swim in Rising Water",
+    "Dijkstra's (Network Delay Time)","Path with Maximum Probability","Bellman-Ford (Cheapest Flights Within K Stops)","Floyd-Warshall (Smallest Number of Neighbors)","0-1 BFS","Path With Minimum Effort","Minimum Cost to Reach City With Discounts",
+    "Prim's Algorithm","Kruskal's Algorithm","Min Cost to Connect All Points","Optimize Water Distribution",
+    "Kosaraju's/Tarjan's SCC","Critical Connections (Bridges)","Articulation Points","Is Graph Bipartite?","Reconstruct Itinerary (Eulerian path)"
+  ]},
+  { name: "Dynamic Programming", problems: [
+    "House Robber I/II","Decode Ways","Word Break","Longest Increasing Subsequence (O(n^2) and O(n log n))","Maximum Product Subarray","Coin Change I/II","Perfect Squares","Jump Game I/II",
+    "Unique Paths I/II","Minimum Path Sum","Dungeon Game","Cherry Pickup","Maximal Square","Maximal Rectangle",
+    "Longest Common Subsequence","Longest Common Substring","Edit Distance","Distinct Subsequences","Interleaving String","Longest Palindromic Subsequence","Palindrome Partitioning II","Wildcard Matching","Regular Expression Matching","Shortest Common Supersequence",
+    "0/1 Knapsack","Unbounded Knapsack","Partition Equal Subset Sum","Target Sum","Partition to K Equal Sum Subsets","Last Stone Weight II","Ones and Zeroes",
+    "House Robber III","Diameter of Binary Tree (DP)","Binary Tree Maximum Path Sum (DP)","Longest Path With Same Value",
+    "Matrix Chain Multiplication","Burst Balloons","Minimum Cost to Merge Stones",
+    "Traveling Salesman Problem (bitmask)","Partition to K Equal Sum Subsets (bitmask)","Shortest Path Visiting All Nodes","Smallest Sufficient Team",
+    "LIS (patience sorting)","Russian Doll Envelopes","Maximum Length of Pair Chain",
+    "Stock with Cooldown/Fee/K-Transactions","Paint House I/II","Stock Buy/Sell with Transaction Limit",
+    "Count Numbers with Unique Digits","Numbers At Most N Given Digit Set","Count of Integers with Digit Sum Constraint"
+  ]},
+  { name: "Greedy", problems: [
+    "Jump Game I/II (greedy)","Gas Station","Candy","Non-overlapping Intervals","Minimum Arrows to Burst Balloons","Task Scheduler","Partition Labels","Queue Reconstruction by Height","Assign Cookies","Minimum Platforms","Huffman Coding","Fractional Knapsack","Boats to Save People","Jump Game VII"
+  ]},
+  { name: "Bit Manipulation", problems: [
+    "Single Number I/II/III","Counting Bits","Missing Number","Reverse Bits","Sum of Two Integers (no + operator)","Bitwise AND of Numbers Range","Maximum XOR of Two Numbers in an Array","Total Hamming Distance","Gray Code","UTF-8 Validation","Find the Difference","XOR Queries of a Subarray"
+  ]},
+  { name: "Math & Number Theory", problems: [
+    "Sieve of Eratosthenes applications","Modular exponentiation","Count Primes","Divide Two Integers (no division)","Fraction to Recurring Decimal","Integer to English Words","Excel Sheet Column Number/Title","Random Pick Index","Shuffle an Array (Fisher-Yates)","nCr with Mod",
+    "Happy Number","Plus One","Pow(x, n)"
+  ]},
+  { name: "Design Problems", problems: [
+    "LRU Cache","LFU Cache","Design Twitter","Design Underground System","Design File System","Design Search Autocomplete System","Design a Rate Limiter","Time Based Key-Value Store","All O`one Data Structure","Design Circular Buffer","Min Stack/Max Stack","Design Browser History","Design a Text Editor (with undo)","Flatten Nested List Iterator","Peeking Iterator","Zigzag Iterator","BST Iterator","Design a Leaderboard"
+  ]},
+  { name: "Advanced / Differentiator Tier", problems: [
+    "Segment Tree with Lazy Propagation","Fenwick Tree 2D","Sparse Table (O(1) RMQ)","KMP String Matching","Z-Function","Rabin-Karp","Manacher's Algorithm","The Skyline Problem","Rectangle Area II","Reservoir Sampling","Randomized Quickselect","Trapping Rain Water II (2D + heap)","Matrix Exponentiation","Print in Order (concurrency)","Print FooBar Alternately (concurrency)","Smallest Sufficient Team","Word Ladder II (BFS+backtrack)"
+  ]}
+];
+
+// Data is stored in the browser's persistent localStorage.
+// This survives refreshes and closing/reopening the browser.
+const STORAGE_KEY = 'dsa-tracker-completed';
+let progress = {}; // key -> { done: bool, note: string, link: string }
+let openSections = new Set();
+let openDetails = new Set();
+
+function slugify(section, name) {
+  return (section + '::' + name).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function getEntry(key) {
+  const e = progress[key];
+  if (!e) return { done: false, note: '', link: '' };
+  if (typeof e === 'boolean') return { done: e, note: '', link: '' }; // legacy migration
+  return { done: !!e.done, note: e.note || '', link: e.link || '' };
+}
+
+function setEntry(key, patch) {
+  const current = getEntry(key);
+  progress[key] = { ...current, ...patch };
+  saveProgress();
+}
+
+async function loadProgress() {
+  try {
+    // localStorage persists across page refreshes and browser sessions.
+    // It works in a normal browser without requiring window.storage.
+    const saved = localStorage.getItem(STORAGE_KEY);
+
+    if (saved) {
+      progress = JSON.parse(saved);
+      return;
+    }
+
+    // Optional migration from the old window.storage implementation.
+    if (window.storage && typeof window.storage.get === 'function') {
+      const result = await window.storage.get(STORAGE_KEY, false);
+      if (result && result.value) {
+        progress = JSON.parse(result.value);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+      }
+    }
+  } catch (e) {
+    console.error('Load failed', e);
+    progress = {};
+  }
+}
+
+let saveTimer = null;
+function saveProgress() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+    } catch (e) {
+      console.error('Save failed', e);
+    }
+  }, 300);
+}
+
+function render() {
+  const container = document.getElementById('sections');
+  container.innerHTML = '';
+
+  const searchTerm = document.getElementById('search').value.trim().toLowerCase();
+  const filterMode = document.getElementById('filter').value;
+
+  let totalAll = 0, doneAll = 0;
+  let anyVisible = false;
+
+  DATA.forEach((section, sIdx) => {
+    const sectionId = 'sec-' + sIdx;
+    let sectionDone = 0;
+    const rows = [];
+
+    section.problems.forEach((name, pIdx) => {
+      const key = slugify(section.name, name + '-' + pIdx);
+      const entry = getEntry(key);
+      totalAll++;
+      if (entry.done) { doneAll++; sectionDone++; }
+
+      const matchesSearch = !searchTerm || name.toLowerCase().includes(searchTerm);
+      const matchesFilter = filterMode === 'all' || (filterMode === 'done' && entry.done) || (filterMode === 'todo' && !entry.done);
+      const visible = matchesSearch && matchesFilter;
+      if (visible) anyVisible = true;
+
+      rows.push({ key, name, entry, visible });
+    });
+
+    const sectionEl = document.createElement('div');
+    sectionEl.className = 'section' + (openSections.has(sectionId) ? ' open' : '');
+
+    const pct = section.problems.length ? Math.round((sectionDone / section.problems.length) * 100) : 0;
+
+    const head = document.createElement('div');
+    head.className = 'section-head';
+    head.innerHTML = `
+      <div class="section-title-row">
+        <span class="chevron">&#9656;</span>
+        <span class="section-title">${section.name}</span>
+      </div>
+      <span class="section-count">${sectionDone} / ${section.problems.length}</span>
+    `;
+    head.addEventListener('click', () => {
+      if (openSections.has(sectionId)) openSections.delete(sectionId);
+      else openSections.add(sectionId);
+      render();
+    });
+
+    const track = document.createElement('div');
+    track.className = 'section-progress-track';
+    track.innerHTML = `<div class="section-progress-fill" style="width:${pct}%"></div>`;
+
+    const list = document.createElement('div');
+    list.className = 'problem-list';
+
+    let sectionHasVisible = false;
+    rows.forEach(row => {
+      if (row.visible) sectionHasVisible = true;
+      const detailsId = 'det-' + row.key;
+      const hasContent = !!(row.entry.note || row.entry.link);
+
+      const itemEl = document.createElement('div');
+      itemEl.className = 'problem-item' + (openDetails.has(row.key) ? ' details-open' : '');
+
+      const rowEl = document.createElement('div');
+      rowEl.className = 'problem-row' + (row.entry.done ? ' done' : '') + (row.visible ? '' : ' hidden');
+      rowEl.innerHTML = `
+        <div class="checkbox">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        </div>
+        <div class="problem-name">${row.name}</div>
+        <button class="notes-toggle${hasContent ? ' has-content' : ''}${openDetails.has(row.key) ? ' open' : ''}" title="Notes & solution link">&#9998;</button>
+      `;
+      rowEl.querySelector('.checkbox').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        setEntry(row.key, { done: !row.entry.done });
+        render();
+      });
+      rowEl.querySelector('.problem-name').addEventListener('click', async () => {
+        setEntry(row.key, { done: !row.entry.done });
+        render();
+      });
+      rowEl.querySelector('.notes-toggle').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (openDetails.has(row.key)) openDetails.delete(row.key);
+        else openDetails.add(row.key);
+        render();
+      });
+
+      const detailsEl = document.createElement('div');
+      detailsEl.className = 'problem-details';
+      detailsEl.innerHTML = `
+        <label for="note-${detailsId}">Notes</label>
+        <textarea id="note-${detailsId}" placeholder="Approach, gotchas, what tripped you up...">${row.entry.note ? escapeHtml(row.entry.note) : ''}</textarea>
+        <label for="link-${detailsId}">GitHub solution link</label>
+        <input type="url" id="link-${detailsId}" placeholder="https://github.com/you/repo/blob/main/solution.py" value="${row.entry.link ? escapeHtml(row.entry.link) : ''}">
+        ${row.entry.link ? `<div class="details-links"><a href="${escapeHtml(row.entry.link)}" target="_blank" rel="noopener">Open solution &#8599;</a></div>` : ''}
+      `;
+      detailsEl.querySelector('textarea').addEventListener('input', (e) => {
+        setEntry(row.key, { note: e.target.value });
+      });
+      detailsEl.querySelector('input[type="url"]').addEventListener('change', (e) => {
+        setEntry(row.key, { link: e.target.value.trim() });
+        render();
+      });
+
+      itemEl.appendChild(rowEl);
+      itemEl.appendChild(detailsEl);
+      list.appendChild(itemEl);
+    });
+
+    if (searchTerm && sectionHasVisible) openSections.add(sectionId);
+
+    sectionEl.appendChild(head);
+    sectionEl.appendChild(track);
+    sectionEl.appendChild(list);
+
+    if (!searchTerm || sectionHasVisible) {
+      container.appendChild(sectionEl);
+    } else if (filterMode !== 'all' && !sectionHasVisible) {
+      // skip section entirely if filter hides all rows and no search
+    }
+  });
+
+  document.getElementById('empty-msg').style.display = anyVisible ? 'none' : 'block';
+
+  document.getElementById('stat-percent').textContent = totalAll ? Math.round((doneAll / totalAll) * 100) + '%' : '0%';
+  document.getElementById('stat-done').textContent = doneAll;
+  document.getElementById('stat-remaining').textContent = totalAll - doneAll;
+  document.getElementById('stat-total').textContent = totalAll;
+}
+
+document.getElementById('search').addEventListener('input', render);
+document.getElementById('filter').addEventListener('change', render);
+document.getElementById('expand-all').addEventListener('click', () => {
+  DATA.forEach((s, i) => openSections.add('sec-' + i));
+  render();
+});
+document.getElementById('collapse-all').addEventListener('click', () => {
+  openSections.clear();
+  render();
+});
+
+(async function init() {
+  await loadProgress();
+  render();
+})();
+</script>
+</body>
+</html>
