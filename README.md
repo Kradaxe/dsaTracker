@@ -1,4 +1,4 @@
-# DSA Tracker
+# DSA Tracker :
 
 A lightweight, browser-based **DSA problem tracker** for keeping track of interview preparation.
 
